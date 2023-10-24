@@ -1,0 +1,37 @@
+Arguments: 
+  /home/pip/.nvm/versions/node/v16.16.0/bin/node /usr/share/yarn/bin/yarn.js
+
+PATH: 
+  /home/pip/.nvm/versions/node/v16.16.0/bin:/home/pip/.cargo/bin:/home/pip/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/pip/.foundry/bin:/usr/local/go/bin:/home/pip/go/bin
+
+Yarn version: 
+  1.22.19
+
+Node version: 
+  16.16.0
+
+Platform: 
+  linux x64
+
+Trace: 
+  SyntaxError: /home/pip/Desktop/quoter/package.json: Unexpected token : in JSON at position 14
+      at JSON.parse (<anonymous>)
+      at /usr/share/yarn/lib/cli.js:1629:59
+      at Generator.next (<anonymous>)
+      at step (/usr/share/yarn/lib/cli.js:310:30)
+      at /usr/share/yarn/lib/cli.js:321:13
+
+npm manifest: 
+  "@uniswap/sdk": "^3.0.3",
+  "@uniswap/sdk-core": "^3.2.2",
+  "@uniswap/v3-core": "^1.0.1",
+  "@uniswap/v3-periphery": "^1.4.3",
+  "@uniswap/v3-sdk": "^3.9.0",
+  "dotenv": "^16.0.3",
+  "ethers": "^5.7.2"
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
