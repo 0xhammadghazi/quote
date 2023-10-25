@@ -15,27 +15,31 @@ const {
 // Addresses import
 const {
   QUOTER2_ADDRESS,
-  FACTORY_ADDRESS,
   UNISWAP_FACTORY_ADDRESS,
 } = require("./config/addresses");
+
+const { rpcURL, ETHEREUM_RPC_URL } = require("./config/rpc");
+
+const {
+  sqrtPriceLimitX96,
+  tolerance,
+  startAmount,
+  endAmount,
+} = require("./config/constant");
 
 // Helper functions import
 const {
   getTokenSymbol,
   getTokenDecimals,
   getEthereumAddress,
+  isCloseEnough,
+  getPoolDetails,
+  getTargetPrice,
+  getTokenInAndOut,
 } = require("./utils/helper");
-
-// Phoenix RPC URL
-const rpcURL =
-  "https://replicator.phoenix.lightlink.io/rpc/v1/elektrik-1b2218236b172e6b9ead3069735102f3";
 
 // Phoenix provider setup
 const provider = new ethers.providers.JsonRpcProvider(rpcURL);
-
-// Ethereum RPC URL
-const ETHEREUM_RPC_URL =
-  "https://mainnet.infura.io/v3/976d84ecbdec4447b6736a02e0623f01";
 
 // Ethereum provider setup
 const ethereumProvider = new ethers.providers.JsonRpcProvider(ETHEREUM_RPC_URL);
@@ -46,15 +50,6 @@ const uniswapFactory = new ethers.Contract(
   FactoryAbi,
   ethereumProvider
 );
-
-// Param of quoter fn call
-const sqrtPriceLimitX96 = 0;
-
-// To check if calculated price is close enough to the target price
-// Note: Tolerance is represented in decimal, if your price tolerance is 1% then set tolerance to 0.01
-function isCloseEnough(calculatedPrice, targetPrice, tolerance = 0.0001) {
-  return Math.abs(calculatedPrice - targetPrice) <= tolerance * targetPrice;
-}
 
 // Returns amount of tokens that needs to be swapped to reach the target price
 async function findOptimalAmountIn(
@@ -87,7 +82,7 @@ async function findOptimalAmountIn(
     const priceAfterSwap = output.sqrtPriceX96After.toString();
     console.log("Sqrt Price after swap", priceAfterSwap);
 
-    if (isCloseEnough(priceAfterSwap, targetPrice)) {
+    if (isCloseEnough(priceAfterSwap, targetPrice, tolerance)) {
       // If price after swap is within tolerance
       return midAmount;
     } else if (targetPrice > priceAfterSwap) {
@@ -110,9 +105,6 @@ async function findOptimalAmountIn(
 }
 
 async function main() {
-  const startAmount = 0;
-  const endAmount = 1000;
-
   const poolAddress = process.argv[2];
   console.log("Elektrik pool address: ", poolAddress);
 
@@ -120,42 +112,31 @@ async function main() {
   const pool = new ethers.Contract(poolAddress, PoolAbi, provider);
 
   // Fetch some details from elektrik pool
-  const token0 = await pool.token0();
-  const token1 = await pool.token1();
-  const fee = await pool.fee();
-  const slot0 = await pool.slot0();
-  const currentPrice = ethers.BigNumber.from(slot0.sqrtPriceX96).toString();
-
-  // Get uniswap v3 pool address with same tokens and fee tier
-  const uniswapPoolAddress = await uniswapFactory.getPool(
-    getEthereumAddress(token0),
-    getEthereumAddress(token1),
-    fee
+  const { token0, token1, fee, currentPrice } = await getPoolDetails(
+    pool,
+    ethers
   );
-  console.log("Uniswap pool address: ", uniswapPoolAddress);
 
-  // Uniswap v3 pool instance
-  const uniswapPool = new ethers.Contract(
-    uniswapPoolAddress,
+  const targetPrice = await getTargetPrice(
+    uniswapFactory,
     PoolAbi,
-    ethereumProvider
+    ethereumProvider,
+    getEthereumAddress,
+    token0,
+    token1,
+    fee,
+    ethers
   );
-
-  // Get target price from uniswap v3 pool
-  const uniswapSlot0 = await uniswapPool.slot0();
-  const targetPrice = 1998058847195277790985671257956330;
 
   console.log("Current price: ", currentPrice);
   console.log("Target price: ", targetPrice);
 
-  // If target is more than current price than token in would be token 1
-  if (targetPrice > currentPrice) {
-    tokenIn = token1;
-    tokenOut = token0;
-  } else {
-    tokenIn = token0;
-    tokenOut = token1;
-  }
+  const { tokenIn, tokenOut } = getTokenInAndOut(
+    targetPrice,
+    currentPrice,
+    token0,
+    token1
+  );
 
   const tokenInDecimals = getTokenDecimals(tokenIn);
 
